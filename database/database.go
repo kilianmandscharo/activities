@@ -12,38 +12,41 @@ type tableSchema struct {
 	columns string
 } 
 
+var tables = []tableSchema {
+	{"users", "(id serial PRIMARY KEY, name text, email text, password text)"},
+	{"activities", "(id serial PRIMARY KEY, name text, user_id int references users(id) ON DELETE CASCADE)"},
+	{"blocks", "(id serial PRIMARY KEY, start_time timestamp, end_time timestamp, activity_id int references activities(id) ON DELETE CASCADE)"},
+	{"pauses", "(id serial PRIMARY KEY, start_time timestamp, end_time timestamp, block_id int references blocks(id) ON DELETE CASCADE)"},
+}
+
 func databaseError(message string, err error) error {
 	errorMessage := fmt.Sprintf("%s, Error: %s", message, err)
 	return errors.New(errorMessage)
 }
 
-func defineTables() []tableSchema {
-	var tables []tableSchema
-
-	tables = append(tables, tableSchema{"users", "(id serial PRIMARY KEY, name text, email text, password text)"})
-	tables = append(tables, tableSchema{"activities", "(id serial PRIMARY KEY, name text, user_id int references users(id))"})
-	tables = append(tables, tableSchema{"blocks", "(id serial PRIMARY KEY, start_time timestamp, end_time timestamp, activity_id int references activities(id))"})
-	tables = append(tables, tableSchema{"pauses", "(id serial PRIMARY KEY, start_time timestamp, end_time timestamp, block_id int references blocks(id))"})
-
-	return tables
-}
-
-func InitDatabaseTables(db *sql.DB) error {
-	tables := defineTables()
-
+func InitTables(db *sql.DB) error {
 	for _, table := range tables {
 		err := createTable(db, table.name, table.columns)	
 		if err != nil {
-			log.Fatal(err)
+			return err	
 		}
 	}
 
 	return nil
 }
 
-func ClearDatabaseTables(db *sql.DB) error {
-	tables := defineTables()
+func ClearTables(db *sql.DB) error {
+	for _, table := range tables {
+		err := clearTable(db, table.name)
+		if err != nil {
+			return err	
+		}
+	}
 
+	return nil
+} 
+
+func DeleteTables(db *sql.DB) error {
 	var reverseTableNames []string
 	for _, table := range tables {
 		reverseTableNames = append(reverseTableNames, table.name)
@@ -56,7 +59,7 @@ func ClearDatabaseTables(db *sql.DB) error {
 	for _, name := range reverseTableNames {
 		err := deleteTable(db, name)
 		if err != nil {
-			log.Fatal(err)
+			return err	
 		}
 	}
 
@@ -67,7 +70,7 @@ func createTable(db *sql.DB, name string, columns string) error {
 	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s", name, columns)
 	_, err := db.Exec(query)
 	if err != nil {
-		return databaseError("Failed to create the database table", err) 
+		return databaseError("Could not create table", err) 
 	}
 
 	return nil
@@ -77,7 +80,17 @@ func deleteTable(db *sql.DB, name string) error {
 	query := fmt.Sprintf("DROP TABLE IF EXISTS %s", name)
 	_, err := db.Exec(query)
 	if err != nil {
-		return databaseError("Failed to delete the database table", err)
+		return databaseError("Could not delete table", err)
+	}
+
+	return nil
+}
+
+func clearTable(db *sql.DB, name string) error {
+	query := fmt.Sprintf("DELETE FROM %s", name)
+	_, err := db.Exec(query)
+	if err != nil {
+		return databaseError("Could not clear table", err)
 	}
 
 	return nil
@@ -86,7 +99,7 @@ func deleteTable(db *sql.DB, name string) error {
 func AddUser(db *sql.DB, name string, email string, password string) error {
 	_, err := db.Exec("INSERT INTO users (name, email, password) VALUES ($1, $2, $3)", name, email, password)
 	if err != nil {
-		return databaseError("Failed to add the user to the database", err) 
+		return databaseError("Could not add the user to the database", err) 
 	}
 
 	return nil
@@ -95,7 +108,7 @@ func AddUser(db *sql.DB, name string, email string, password string) error {
 func AddActivity(db *sql.DB, name string, user_id int) error {
 	_, err := db.Exec("INSERT INTO activities (name, user_id) VALUES ($1, $2)", name, user_id)
 	if err != nil {
-		return databaseError("Failed to add the activity to the database", err) 
+		return databaseError("Could not add the activity to the database", err) 
 	}
 	
 	return nil
@@ -104,7 +117,7 @@ func AddActivity(db *sql.DB, name string, user_id int) error {
 func AddBlock(db *sql.DB, start_time string, end_time string, activity_id int) error {
 	_, err := db.Exec("INSERT INTO blocks (start_time, end_time, activity_id) VALUES ($1, $2, $3)", start_time, end_time, activity_id)
 	if err != nil {
-		return databaseError("Failed to add the block to the database", err) 
+		return databaseError("Could not add the block to the database", err) 
 	}
 
 	return nil
@@ -113,7 +126,17 @@ func AddBlock(db *sql.DB, start_time string, end_time string, activity_id int) e
 func AddPause(db *sql.DB, start_time string, end_time string, block_id int) error {
 	_, err := db.Exec("INSERT INTO pauses (start_time, end_time, block_id) VALUES ($1, $2, $3)", start_time, end_time, block_id)
 	if err != nil {
-		return databaseError("Failed to add the pause to the database", err) 
+		return databaseError("Could not add the pause to the database", err) 
+	}
+
+	return nil
+}
+
+func DeleteByTableAndId(db *sql.DB, table string, id int) error {
+	query := fmt.Sprintf("DELETE FROM %s WHERE id = %d", table, id)
+	_, err := db.Exec(query)
+	if err != nil {
+		return databaseError("Could not delete the row from the database", err)
 	}
 
 	return nil
