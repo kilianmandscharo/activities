@@ -4,11 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
-	"github.com/kilianmandscharo/activities/database"
-
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/kilianmandscharo/activities/database"
+	"github.com/kilianmandscharo/activities/schemas"
 
 	_ "github.com/lib/pq"
 )
@@ -26,24 +28,26 @@ func main() {
 	}
 	defer db.Close()
 
-	database.DeleteTables(db)
+	database.ClearTables(db)
 	database.InitTables(db)
 
-	database.AddUser(db, "Kilian", "kilian187@gmail.com", "6fd7gf9dfgh90h900")
-	database.AddUser(db, "Peter", "peter291@gmail.com", "34ffvfdghash9vcbv")
+	router := gin.Default()
 
-	database.AddActivity(db, "Work", 1)
-	database.AddActivity(db, "Guitar Practice", 1)
-	database.AddActivity(db, "Gymnastics", 2)
+	router.POST("/user", func(c *gin.Context) {
+		var user schemas.UserCreate
 
-	database.AddBlock(db, "2022-10-15 15:30:00", "2022-10-15 17:30", 1)
-	database.AddBlock(db, "2022-10-15 15:30:00", "2022-10-15 17:30", 2)
-	database.AddBlock(db, "2022-10-15 15:30:00", "2022-10-15 17:30", 3)
+		if err := c.BindJSON(&user); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
+		}
 
-	database.AddPause(db, "2022-10-15 16:00", "2022-10-15 16:15", 1)
-	database.AddPause(db, "2022-10-15 16:00", "2022-10-15 16:15", 2)
-	database.AddPause(db, "2022-10-15 16:00", "2022-10-15 16:15", 3)
+		if err := database.AddUser(db, user.Name, user.Email, user.Password); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": err})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"status": "user created"})
+		}
 
-	database.DeleteByTableAndId(db, "users", 1)
+	})
+
+	router.Run(":8080")
 }
 
