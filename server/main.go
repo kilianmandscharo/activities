@@ -38,14 +38,29 @@ func main() {
 
 		if err := c.BindJSON(&user); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
+			return
 		}
 
 		if err := database.AddUser(db, user.Name, user.Email, user.Password); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": err})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
 		} else {
 			c.JSON(http.StatusOK, gin.H{"status": "user created"})
 		}
+	})
 
+	router.POST("/activity", func(c *gin.Context) {
+		var activity schemas.ActivityCreate	
+
+		if err := c.BindJSON(&activity); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
+			return
+		}
+
+		if err := database.AddActivity(db, activity.Name, activity.UserId); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"status": "activity created"})
+		}
 	})
 
 	router.Run(":8080")

@@ -139,26 +139,6 @@ func DeleteByTableAndId(db *sql.DB, table string, id int) error {
 	return nil
 }
 
-// func GetUsers(db *sql.DB) {
-// 	rows, err := db.Query("SELECT * FROM users") 
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	for rows.Next() {
-// 		var (
-// 			id int
-// 			name string
-// 			email string
-// 			password string
-// 		)
-// 		if err := rows.Scan(&id, &name, &email, &password); err != nil {
-// 			log.Fatal(err)
-// 		}
-// 		fmt.Println(id, name, email, password)
-// 	}
-// }
-
 func GetAllActivities(db *sql.DB, userId int) []schemas.Activity {
 	var activities []schemas.Activity
 
