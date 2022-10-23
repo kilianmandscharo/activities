@@ -33,3 +33,26 @@ type User struct {
 	Email string
 	Password string
 }
+
+type UserCreate struct {
+	Name string `json:"name" binding:"required"`
+	Email string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+type ActivityCreate struct {
+	Name string `json:"name" binding:"required"`
+	UserId int `json:"userId" binding:"required"`
+}
+
+type BlockCreate struct {
+	StartTime string `json:"startTime" binding:"required"`
+	EndTime string `json:"endTime" binding:"required"`
+	ActivityId int `json:"activityId" binding:"required"`
+}
+
+type PauseCreate struct {
+	StartTime string `json:"startTime" binding:"required"`
+	EndTime string `json:"endTime" binding:"required"`
+	BlockId int `json:"blockId" binding:"required"`
+}
