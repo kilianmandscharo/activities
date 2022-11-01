@@ -21,7 +21,7 @@ func main() {
 		log.Fatal(("Could not load .env file"))
 	}
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PW"), os.Getenv("DB_NAME")) 
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PW"), os.Getenv("DB_NAME"))
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -49,7 +49,7 @@ func main() {
 	})
 
 	router.POST("/activity", func(c *gin.Context) {
-		var activity schemas.ActivityCreate	
+		var activity schemas.ActivityCreate
 
 		if err := c.BindJSON(&activity); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
@@ -63,6 +63,20 @@ func main() {
 		}
 	})
 
+    router.POST("/block", func(c *gin.Context) {
+        var block schemas.BlockCreate
+
+        if err := c.BindJSON(&block); err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
+            return
+        }
+
+        if err := database.AddBlock(db, block.StartTime, block.EndTime, block.ActivityId); err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
+        } else {
+            c.JSON(http.StatusOK, gin.H{"status": "block created"})
+        }
+    })
+
 	router.Run(":8080")
 }
-
