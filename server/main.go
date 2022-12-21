@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/kilianmandscharo/activities/database"
@@ -32,6 +34,7 @@ func main() {
 	database.InitTables(db)
 
 	router := gin.Default()
+	router.Use(cors.Default())
 
 	router.POST("/user", func(c *gin.Context) {
 		var user schemas.UserCreate
@@ -63,20 +66,36 @@ func main() {
 		}
 	})
 
-    router.POST("/block", func(c *gin.Context) {
-        var block schemas.BlockCreate
+	router.DELETE("/activity/:activityId", func(c *gin.Context) {
+		activityId, _ := strconv.Atoi(c.Param("activityId"))
+		err := database.DeleteByTableAndId(db, "activities", activityId)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"status": "activity not found"})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"status": "activity deleted"})
+		}
+	})
 
-        if err := c.BindJSON(&block); err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
-            return
-        }
+	router.GET("/activities/:userId", func(c *gin.Context) {
+		userId, _ := strconv.Atoi(c.Param("userId"))
+		activities := database.GetAllActivities(db, userId)
+		c.JSON(http.StatusOK, activities)
+	})
 
-        if err := database.AddBlock(db, block.StartTime, block.EndTime, block.ActivityId); err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
-        } else {
-            c.JSON(http.StatusOK, gin.H{"status": "block created"})
-        }
-    })
+	router.POST("/block", func(c *gin.Context) {
+		var block schemas.BlockCreate
+
+		if err := c.BindJSON(&block); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
+			return
+		}
+
+		if err := database.AddBlock(db, block.StartTime, block.EndTime, block.ActivityId); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"status": "block created"})
+		}
+	})
 
 	router.Run(":8080")
 }

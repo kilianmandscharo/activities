@@ -33,11 +33,15 @@ func InitTables(db *sql.DB) error {
 }
 
 func ClearTables(db *sql.DB) error {
-	for _, table := range tables {
+	/*for _, table := range tables {
 		err := clearTable(db, table.Name)
 		if err != nil {
 			return err
 		}
+	}*/
+	_, err := db.Exec("TRUNCATE users RESTART IDENTITY CASCADE")
+	if err != nil {
+		return databaseError("Could not clear table", err)
 	}
 
 	return nil
@@ -147,7 +151,7 @@ func GetAllActivities(db *sql.DB, userId int) []schemas.Activity {
 		log.Fatal(err)
 	}
 
-    defer rows.Close()
+	defer rows.Close()
 
 	for rows.Next() {
 		var (
@@ -181,7 +185,7 @@ func GetAllBlocks(db *sql.DB, activityId int) []schemas.Block {
 		log.Fatal(err)
 	}
 
-    defer rows.Close()
+	defer rows.Close()
 
 	for rows.Next() {
 		var (
@@ -217,7 +221,7 @@ func GetAllPauses(db *sql.DB, blockId int) []schemas.Pause {
 		log.Fatal(err)
 	}
 
-    defer rows.Close()
+	defer rows.Close()
 
 	for rows.Next() {
 		var (
@@ -242,4 +246,14 @@ func GetAllPauses(db *sql.DB, blockId int) []schemas.Pause {
 	}
 
 	return pauses
+}
+
+func updateActivityName(db *sql.DB, activityId int, newName string) error {
+	query := fmt.Sprintf("UPDATE activities SET name = %s WHERE id = %d", newName, activityId)
+	_, err := db.Exec(query)
+	if err != nil {
+		return databaseError("Could not delete table", err)
+	}
+
+	return nil
 }
