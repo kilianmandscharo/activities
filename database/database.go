@@ -63,52 +63,6 @@ func (db *Database) AddUser(name string, email string, password string) (int, er
 	return id, nil
 }
 
-func (db *Database) AddActivity(name string, user_id int) (int, error) {
-	row := db.db.QueryRow(
-		"INSERT INTO activities (name, user_id) VALUES ($1, $2) RETURNING id",
-		name,
-		user_id)
-	var id int
-	if err := row.Scan(&id); err != nil {
-		return -1, err
-	}
-	return id, nil
-}
-
-func (db *Database) AddBlock(start_time string, end_time string, activity_id int) (int, error) {
-	row := db.db.QueryRow(
-		"INSERT INTO blocks (start_time, end_time, activity_id) VALUES ($1, $2, $3) RETURNING id",
-		start_time,
-		end_time,
-		activity_id)
-	var id int
-	if err := row.Scan(&id); err != nil {
-		return -1, err
-	}
-	return id, nil
-}
-
-func (db *Database) AddPause(start_time string, end_time string, block_id int) (int, error) {
-	row := db.db.QueryRow(
-		"INSERT INTO pauses (start_time, end_time, block_id) VALUES ($1, $2, $3) RETURNING id",
-		start_time,
-		end_time,
-		block_id)
-	var id int
-	if err := row.Scan(&id); err != nil {
-		return -1, err
-	}
-	return id, nil
-}
-
-func (db *Database) DeleteByTableAndId(table string, id int) error {
-	_, err := db.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE id = %d", table, id))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (db *Database) GetActivities(userId int) ([]schemas.Activity, error) {
 	var activities []schemas.Activity
 
@@ -140,9 +94,28 @@ func (db *Database) GetActivities(userId int) ([]schemas.Activity, error) {
 	return activities, nil
 }
 
+func (db *Database) AddActivity(name string, user_id int) (int, error) {
+	row := db.db.QueryRow(
+		"INSERT INTO activities (name, user_id) VALUES ($1, $2) RETURNING id",
+		name,
+		user_id)
+	var id int
+	if err := row.Scan(&id); err != nil {
+		return -1, err
+	}
+	return id, nil
+}
+
+func (db *Database) UpdateActivity(id int, name string) error {
+	_, err := db.db.Exec("UPDATE activities SET name = $1 WHERE id = $2", name, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (db *Database) GetBlocks(activityId int) ([]schemas.Block, error) {
 	var blocks []schemas.Block
-
 	rows, err := db.db.Query("SELECT * FROM blocks WHERE activity_id = $1", activityId)
 	if err != nil {
 		log.Fatal(err)
@@ -173,6 +146,27 @@ func (db *Database) GetBlocks(activityId int) ([]schemas.Block, error) {
 	return blocks, nil
 }
 
+func (db *Database) AddBlock(startTime string, endTime string, activityId int) (int, error) {
+	row := db.db.QueryRow(
+		"INSERT INTO blocks (start_time, end_time, activity_id) VALUES ($1, $2, $3) RETURNING id",
+		startTime,
+		endTime,
+		activityId)
+	var id int
+	if err := row.Scan(&id); err != nil {
+		return -1, err
+	}
+	return id, nil
+}
+
+func (db *Database) UpdateBlock(id int, startTime string, endTime string) error {
+	_, err := db.db.Exec("UPDATE blocks SET start_time = $1, end_time = $2 WHERE id = $3", startTime, endTime, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (db *Database) GetPauses(blockId int) ([]schemas.Pause, error) {
 	var pauses []schemas.Pause
 
@@ -201,6 +195,35 @@ func (db *Database) GetPauses(blockId int) ([]schemas.Pause, error) {
 	return pauses, nil
 }
 
+func (db *Database) AddPause(startTime string, endTime string, blockId int) (int, error) {
+	row := db.db.QueryRow(
+		"INSERT INTO pauses (start_time, end_time, block_id) VALUES ($1, $2, $3) RETURNING id",
+		startTime,
+		endTime,
+		blockId)
+	var id int
+	if err := row.Scan(&id); err != nil {
+		return -1, err
+	}
+	return id, nil
+}
+
+func (db *Database) UpdatePause(id int, startTime string, endTime string) error {
+	_, err := db.db.Exec("UPDATE pauses SET start_time = $1, end_time = $2 WHERE id = $3", startTime, endTime, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) DeleteByTableAndId(table string, id int) error {
+	_, err := db.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE id = %d", table, id))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func createTable(db *sql.DB, name string, columns string) error {
 	_, err := db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s", name, columns))
 	if err != nil {
@@ -216,16 +239,6 @@ func deleteTable(db *sql.DB, name string) error {
 	}
 	return nil
 }
-
-// func updateActivityName(db *sql.DB, activityId int, newName string) error {
-// 	query := fmt.Sprintf("UPDATE activities SET name = %s WHERE id = %d", newName, activityId)
-// 	_, err := db.Exec(query)
-// 	if err != nil {
-// 		return databaseError("Could not delete table", err)
-// 	}
-//
-// 	return nil
-// }
 
 // func DeleteTables(db *sql.DB) error {
 // 	var reverseTableNames []string

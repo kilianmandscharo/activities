@@ -38,79 +38,171 @@ func main() {
 
 	defer db.Close()
 	err = db.Init()
-  if err != nil {
-    log.Fatal("could not init database", err)
-  }
+	if err != nil {
+		log.Fatal("could not init database", err)
+	}
 	err = db.Clear()
-  if err != nil {
-    log.Fatal("could not clear database", err)
-  }
-  _, err = db.AddUser("Apollo", "test@gmail.com", "12345")
-  if err != nil {
-    log.Fatal("could not add user", err)
-  }
+	if err != nil {
+		log.Fatal("could not clear database", err)
+	}
+	_, err = db.AddUser("Apollo", "test@gmail.com", "12345")
+	if err != nil {
+		log.Fatal("could not add user", err)
+	}
 
 	router := gin.Default()
 	router.Use(cors.Default())
 
 	router.POST("/user", func(c *gin.Context) {
 		var user schemas.UserCreate
-
 		if err := c.BindJSON(&user); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read body"})
 			return
 		}
-
-		if _, err := db.AddUser(user.Name, user.Email, user.Password); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
+		if id, err := db.AddUser(user.Name, user.Email, user.Password); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not add user"})
 		} else {
-			c.JSON(http.StatusOK, gin.H{"status": "user created"})
+			c.JSON(http.StatusOK, gin.H{"id": id})
+		}
+	})
+
+	router.GET("/activity/:userId", func(c *gin.Context) {
+		userId, _ := strconv.Atoi(c.Param("userId"))
+		activities, err := db.GetActivities(userId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not get activities"})
+		} else {
+			c.JSON(http.StatusOK, activities)
 		}
 	})
 
 	router.POST("/activity", func(c *gin.Context) {
 		var activity schemas.ActivityCreate
-
 		if err := c.BindJSON(&activity); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read body"})
 			return
 		}
-
-		if _, err := db.AddActivity(activity.Name, activity.UserId); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
+		if id, err := db.AddActivity(activity.Name, activity.UserId); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not add activity"})
 		} else {
-			c.JSON(http.StatusOK, gin.H{"status": "activity created"})
+			c.JSON(http.StatusOK, gin.H{"id": id})
 		}
 	})
 
-	router.DELETE("/activity/:activityId", func(c *gin.Context) {
-		activityId, _ := strconv.Atoi(c.Param("activityId"))
-		err := db.DeleteByTableAndId("activities", activityId)
+	router.PUT("/activity", func(c *gin.Context) {
+		var activity schemas.Activity
+		if err := c.BindJSON(&activity); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read body"})
+			return
+		}
+		err := db.UpdateActivity(activity.Id, activity.Name)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"status": "activity not found"})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not update activity"})
+      fmt.Println(err)
 		} else {
-			c.JSON(http.StatusOK, gin.H{"status": "activity deleted"})
+			c.Status(http.StatusOK)
 		}
 	})
 
-	router.GET("/activities/:userId", func(c *gin.Context) {
-		userId, _ := strconv.Atoi(c.Param("userId"))
-		activities, _ := db.GetActivities(userId)
-		c.JSON(http.StatusOK, activities)
+	router.DELETE("/activity/:id", func(c *gin.Context) {
+		id, _ := strconv.Atoi(c.Param("id"))
+		err := db.DeleteByTableAndId("activities", id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not delete activity"})
+		} else {
+			c.Status(http.StatusOK)
+		}
+	})
+
+	router.GET("/block/:activityId", func(c *gin.Context) {
+		activityId, _ := strconv.Atoi(c.Param("activityId"))
+		blocks, err := db.GetBlocks(activityId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not get blocks"})
+		} else {
+			c.JSON(http.StatusOK, blocks)
+		}
 	})
 
 	router.POST("/block", func(c *gin.Context) {
 		var block schemas.BlockCreate
-
 		if err := c.BindJSON(&block); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "unauthorized"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read block"})
 			return
 		}
-
-		if _, err := db.AddBlock(block.StartTime, block.EndTime, block.ActivityId); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
+		if id, err := db.AddBlock(block.StartTime, block.EndTime, block.ActivityId); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not add block"})
 		} else {
-			c.JSON(http.StatusOK, gin.H{"status": "block created"})
+			c.JSON(http.StatusOK, gin.H{"id": id})
+		}
+	})
+
+	router.PUT("/block", func(c *gin.Context) {
+		var block schemas.Block
+		if err := c.BindJSON(&block); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read block"})
+			return
+		}
+		if err := db.UpdateBlock(block.Id, block.StartTime, block.EndTime); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not update block"})
+		} else {
+			c.Status(http.StatusOK)
+		}
+	})
+
+	router.DELETE("/block/:id", func(c *gin.Context) {
+		blockId, _ := strconv.Atoi(c.Param("id"))
+		err := db.DeleteByTableAndId("blocks", blockId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not delete block"})
+		} else {
+			c.Status(http.StatusOK)
+		}
+	})
+
+	router.GET("/pause/:blockId", func(c *gin.Context) {
+		blockId, _ := strconv.Atoi(c.Param("blockId"))
+		pauses, err := db.GetBlocks(blockId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not get pauses"})
+		} else {
+			c.JSON(http.StatusOK, pauses)
+		}
+	})
+
+	router.POST("/pause", func(c *gin.Context) {
+		var pause schemas.PauseCreate
+		if err := c.BindJSON(&pause); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read pause"})
+			return
+		}
+		if id, err := db.AddPause(pause.StartTime, pause.EndTime, pause.BlockId); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not add pause"})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"id": id})
+		}
+	})
+
+	router.PUT("/pause", func(c *gin.Context) {
+		var pause schemas.Pause
+		if err := c.BindJSON(&pause); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read pause"})
+			return
+		}
+		if err := db.UpdatePause(pause.Id, pause.StartTime, pause.EndTime); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not update pause"})
+		} else {
+			c.Status(http.StatusOK)
+		}
+	})
+
+	router.DELETE("/pause/:id", func(c *gin.Context) {
+		id, _ := strconv.Atoi(c.Param("id"))
+		err := db.DeleteByTableAndId("blocks", id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not delete pause"})
+		} else {
+			c.Status(http.StatusOK)
 		}
 	})
 
