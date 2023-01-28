@@ -39,7 +39,7 @@ func (db *Database) Init() error {
 }
 
 func (db *Database) Close() {
-  db.db.Close()
+	db.db.Close()
 }
 
 func (db *Database) Clear() error {
@@ -101,8 +101,8 @@ func (db *Database) AddPause(start_time string, end_time string, block_id int) (
 	return id, nil
 }
 
-func DeleteByTableAndId(db *sql.DB, table string, id int) error {
-	_, err := db.Exec("DELETE FROM ? WHERE id = ?", table, id)
+func (db *Database) DeleteByTableAndId(table string, id int) error {
+	_, err := db.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE id = %d", table, id))
 	if err != nil {
 		return err
 	}

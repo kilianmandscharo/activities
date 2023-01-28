@@ -21,10 +21,10 @@ type Block struct {
 }
 
 type Activity struct {
-	Id int
-	Name string
-	UserId int
-	Blocks []Block
+  Id int `json:"id"`
+	Name string `json:"name"`
+  UserId int `json:"userId"`
+  Blocks []Block `json:"blocks"`
 }
 
 type User struct {

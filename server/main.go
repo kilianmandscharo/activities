@@ -35,8 +35,20 @@ func main() {
 	if err != nil {
 		log.Fatal("could not open database")
 	}
-	db.Init()
-	db.Clear()
+
+	defer db.Close()
+	err = db.Init()
+  if err != nil {
+    log.Fatal("could not init database", err)
+  }
+	err = db.Clear()
+  if err != nil {
+    log.Fatal("could not clear database", err)
+  }
+  _, err = db.AddUser("Apollo", "test@gmail.com", "12345")
+  if err != nil {
+    log.Fatal("could not add user", err)
+  }
 
 	router := gin.Default()
 	router.Use(cors.Default())
@@ -71,15 +83,15 @@ func main() {
 		}
 	})
 
-	// router.DELETE("/activity/:activityId", func(c *gin.Context) {
-	// 	activityId, _ := strconv.Atoi(c.Param("activityId"))
-	// 	err := db.DeleteByTableAndId("activities", activityId)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusNotFound, gin.H{"status": "activity not found"})
-	// 	} else {
-	// 		c.JSON(http.StatusOK, gin.H{"status": "activity deleted"})
-	// 	}
-	// })
+	router.DELETE("/activity/:activityId", func(c *gin.Context) {
+		activityId, _ := strconv.Atoi(c.Param("activityId"))
+		err := db.DeleteByTableAndId("activities", activityId)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"status": "activity not found"})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"status": "activity deleted"})
+		}
+	})
 
 	router.GET("/activities/:userId", func(c *gin.Context) {
 		userId, _ := strconv.Atoi(c.Param("userId"))
