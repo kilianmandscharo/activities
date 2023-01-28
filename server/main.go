@@ -1,9 +1,9 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
+
 	"net/http"
 	"os"
 	"strconv"
@@ -23,15 +23,20 @@ func main() {
 		log.Fatal(("Could not load .env file"))
 	}
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PW"), os.Getenv("DB_NAME"))
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
+	connStr := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s",
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PW"),
+		os.Getenv("DB_NAME"))
 
-	database.ClearTables(db)
-	database.InitTables(db)
+	db, err := database.New(connStr)
+	if err != nil {
+		log.Fatal("could not open database")
+	}
+	db.Init()
+	db.Clear()
 
 	router := gin.Default()
 	router.Use(cors.Default())
@@ -44,7 +49,7 @@ func main() {
 			return
 		}
 
-		if err := database.AddUser(db, user.Name, user.Email, user.Password); err != nil {
+		if _, err := db.AddUser(user.Name, user.Email, user.Password); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
 		} else {
 			c.JSON(http.StatusOK, gin.H{"status": "user created"})
@@ -59,26 +64,26 @@ func main() {
 			return
 		}
 
-		if err := database.AddActivity(db, activity.Name, activity.UserId); err != nil {
+		if _, err := db.AddActivity(activity.Name, activity.UserId); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
 		} else {
 			c.JSON(http.StatusOK, gin.H{"status": "activity created"})
 		}
 	})
 
-	router.DELETE("/activity/:activityId", func(c *gin.Context) {
-		activityId, _ := strconv.Atoi(c.Param("activityId"))
-		err := database.DeleteByTableAndId(db, "activities", activityId)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"status": "activity not found"})
-		} else {
-			c.JSON(http.StatusOK, gin.H{"status": "activity deleted"})
-		}
-	})
+	// router.DELETE("/activity/:activityId", func(c *gin.Context) {
+	// 	activityId, _ := strconv.Atoi(c.Param("activityId"))
+	// 	err := db.DeleteByTableAndId("activities", activityId)
+	// 	if err != nil {
+	// 		c.JSON(http.StatusNotFound, gin.H{"status": "activity not found"})
+	// 	} else {
+	// 		c.JSON(http.StatusOK, gin.H{"status": "activity deleted"})
+	// 	}
+	// })
 
 	router.GET("/activities/:userId", func(c *gin.Context) {
 		userId, _ := strconv.Atoi(c.Param("userId"))
-		activities := database.GetAllActivities(db, userId)
+		activities, _ := db.GetActivities(userId)
 		c.JSON(http.StatusOK, activities)
 	})
 
@@ -90,7 +95,7 @@ func main() {
 			return
 		}
 
-		if err := database.AddBlock(db, block.StartTime, block.EndTime, block.ActivityId); err != nil {
+		if _, err := db.AddBlock(block.StartTime, block.EndTime, block.ActivityId); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": err.Error()})
 		} else {
 			c.JSON(http.StatusOK, gin.H{"status": "block created"})
