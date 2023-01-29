@@ -66,13 +66,23 @@ func main() {
 		}
 	})
 
-	router.GET("/activity/:userId", func(c *gin.Context) {
+	router.GET("/activities/:userId", func(c *gin.Context) {
 		userId, _ := strconv.Atoi(c.Param("userId"))
 		activities, err := db.GetActivities(userId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not get activities"})
 		} else {
 			c.JSON(http.StatusOK, activities)
+		}
+	})
+
+	router.GET("/activity/:id", func(c *gin.Context) {
+		id, _ := strconv.Atoi(c.Param("id"))
+		activity, err := db.GetActivity(id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not get activity"})
+		} else {
+			c.JSON(http.StatusOK, activity)
 		}
 	})
 
@@ -98,7 +108,7 @@ func main() {
 		err := db.UpdateActivity(activity.Id, activity.Name)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not update activity"})
-      fmt.Println(err)
+			fmt.Println(err)
 		} else {
 			c.Status(http.StatusOK)
 		}

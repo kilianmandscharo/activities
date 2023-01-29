@@ -94,6 +94,26 @@ func (db *Database) GetActivities(userId int) ([]schemas.Activity, error) {
 	return activities, nil
 }
 
+func (db *Database) GetActivity(activityId int) (schemas.Activity, error) {
+	var activity schemas.Activity
+	row := db.db.QueryRow("SELECT * FROM activities WHERE id = $1", activityId)
+	var id int
+	var name string
+	var userId int
+	if err := row.Scan(&id, &name, &userId); err != nil {
+		return activity, err
+	}
+	blocks, err := db.GetBlocks(activityId)
+	if err != nil {
+		return activity, err
+	}
+	activity.Id = id
+	activity.Name = name
+	activity.UserId = userId
+	activity.Blocks = blocks
+	return activity, nil
+}
+
 func (db *Database) AddActivity(name string, user_id int) (int, error) {
 	row := db.db.QueryRow(
 		"INSERT INTO activities (name, user_id) VALUES ($1, $2) RETURNING id",
