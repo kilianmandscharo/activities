@@ -46,13 +46,14 @@ type ActivityCreate struct {
 }
 
 type BlockCreate struct {
-	StartTime  string `json:"startTime" binding:"required"`
-	EndTime    string `json:"endTime" binding:"required"`
-	ActivityId int    `json:"activityId" binding:"required"`
+	StartTime  string        `json:"startTime" binding:"required"`
+	EndTime    string        `json:"endTime" binding:"required"`
+	ActivityId int           `json:"activityId" binding:"required"`
+	Pauses     []PauseCreate `json:"pauses"`
 }
 
 type PauseCreate struct {
 	StartTime string `json:"startTime" binding:"required"`
 	EndTime   string `json:"endTime" binding:"required"`
-	BlockId   int    `json:"blockId" binding:"required"`
+	BlockId   int    `json:"blockId"`
 }

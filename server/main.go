@@ -140,11 +140,19 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read block"})
 			return
 		}
-		if id, err := db.AddBlock(block.StartTime, block.EndTime, block.ActivityId); err != nil {
+		id, err := db.AddBlock(block.StartTime, block.EndTime, block.ActivityId)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not add block"})
-		} else {
-			c.JSON(http.StatusOK, gin.H{"id": id})
+			return
 		}
+		for _, pause := range block.Pauses {
+			_, err := db.AddPause(pause.StartTime, pause.EndTime, id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "could not add pause"})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"id": id})
 	})
 
 	router.PUT("/block", func(c *gin.Context) {
