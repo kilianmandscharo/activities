@@ -108,7 +108,6 @@ func main() {
 		err := db.UpdateActivity(activity.Id, activity.Name)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not update activity"})
-			fmt.Println(err)
 		} else {
 			c.Status(http.StatusOK)
 		}
@@ -124,13 +123,23 @@ func main() {
 		}
 	})
 
-	router.GET("/block/:activityId", func(c *gin.Context) {
+	router.GET("/blocks/:activityId", func(c *gin.Context) {
 		activityId, _ := strconv.Atoi(c.Param("activityId"))
 		blocks, err := db.GetBlocks(activityId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not get blocks"})
 		} else {
 			c.JSON(http.StatusOK, blocks)
+		}
+	})
+
+	router.GET("/block/:id", func(c *gin.Context) {
+		id, _ := strconv.Atoi(c.Param("id"))
+		block, err := db.GetBlock(id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "coult not get block"})
+		} else {
+			c.JSON(http.StatusOK, block)
 		}
 	})
 
@@ -163,9 +172,20 @@ func main() {
 		}
 		if err := db.UpdateBlock(block.Id, block.StartTime, block.EndTime); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not update block"})
-		} else {
-			c.Status(http.StatusOK)
+			return
 		}
+		if err := db.DeletePauses(block.Id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not update pauses"})
+			return
+		}
+		for _, pause := range block.Pauses {
+			_, err := db.AddPause(pause.StartTime, pause.EndTime, block.Id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "could not update pause"})
+				return
+			}
+		}
+		c.Status(http.StatusOK)
 	})
 
 	router.DELETE("/block/:id", func(c *gin.Context) {

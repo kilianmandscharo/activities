@@ -166,6 +166,28 @@ func (db *Database) GetBlocks(activityId int) ([]schemas.Block, error) {
 	return blocks, nil
 }
 
+func (db *Database) GetBlock(blockId int) (schemas.Block, error) {
+	var block schemas.Block
+	row := db.db.QueryRow("SELECT * FROM blocks WHERE id = $1", blockId)
+	var id int
+	var startTime string
+	var endTime string
+	var activityId int
+	if err := row.Scan(&id, &startTime, &endTime, &activityId); err != nil {
+		return block, err
+	}
+	pauses, err := db.GetPauses(blockId)
+	if err != nil {
+		return block, err
+	}
+	block.Id = id
+	block.StartTime = startTime
+	block.EndTime = endTime
+	block.ActivityId = activityId
+	block.Pauses = pauses
+	return block, nil
+}
+
 func (db *Database) AddBlock(startTime string, endTime string, activityId int) (int, error) {
 	row := db.db.QueryRow(
 		"INSERT INTO blocks (start_time, end_time, activity_id) VALUES ($1, $2, $3) RETURNING id",
@@ -190,7 +212,7 @@ func (db *Database) UpdateBlock(id int, startTime string, endTime string) error 
 func (db *Database) GetPauses(blockId int) ([]schemas.Pause, error) {
 	var pauses []schemas.Pause
 
-	rows, err := db.db.Query("SELECT * FROM pauses WHERE id = $1", blockId)
+	rows, err := db.db.Query("SELECT * FROM pauses WHERE block_id = $1", blockId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -230,6 +252,14 @@ func (db *Database) AddPause(startTime string, endTime string, blockId int) (int
 
 func (db *Database) UpdatePause(id int, startTime string, endTime string) error {
 	_, err := db.db.Exec("UPDATE pauses SET start_time = $1, end_time = $2 WHERE id = $3", startTime, endTime, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) DeletePauses(blockId int) error {
+	_, err := db.db.Exec("DELETE FROM pauses WHERE block_id = $1", blockId)
 	if err != nil {
 		return err
 	}
