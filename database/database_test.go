@@ -7,14 +7,41 @@ import (
 	"testing"
 
 	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 )
 
 var db *Database
 
+const (
+	testUserId       = 1
+	testUserName     = "Apollo"
+	testUserEmail    = "test@gmail.com"
+	testUserPassword = "12345"
+
+	testActivityId          = 1
+	testActivityName        = "Running"
+	testActivityNameUpdated = "Swimming"
+
+	testBlockId               = 1
+	testBlockStartTime        = "2023-02-01T14:00:00Z"
+	testBlockEndTime          = "2023-02-01T14:30:00Z"
+	testBlockStartTimeUpdated = "2023-04-05T16:00:00Z"
+	testBlockEndTimeUpdated   = "2023-04-05T16:30:00Z"
+
+	testPauseId               = 1
+	testPauseStartTime        = "2023-02-01T14:15:00Z"
+	testPauseEndTime          = "2023-02-01T14:20:00Z"
+	testPauseStartTimeUpdated = "2023-04-05T16:15:00Z"
+	testPauseEndTimeUpdated   = "2023-04-05T16:20:00Z"
+
+	testStartTimeCurrentBlock = "2023-02-01T14:15:00Z"
+	testEndTimeCurrentBlock   = ""
+)
+
 func init() {
 	err := godotenv.Load("../.env")
 	if err != nil {
-		log.Fatal("could not load .env file")
+		log.Fatal("could not load .env file", err)
 	}
 
 	connStr := fmt.Sprintf(
@@ -23,148 +50,240 @@ func init() {
 		os.Getenv("DB_PORT"),
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PW"),
-		os.Getenv("DB_NAME"))
+		os.Getenv("DB_NAME_TEST"))
 
 	database, err := New(connStr)
 	if err != nil {
-		log.Fatal("could not open database")
+		log.Fatal("could not open database:", err)
 	}
 	db = database
 	if err := db.Init(); err != nil {
-		log.Fatal("could not initialize database")
+		log.Fatal("could not initialize database:", err)
 	}
 	if err := db.Clear(); err != nil {
-		log.Fatal("could not clear database")
+		log.Fatal("could not clear database:", err)
 	}
 }
 
 func TestAddUser(t *testing.T) {
-	testName := "Apollo"
-	testEmail := "test@gmail.com"
-	testPassword := "12345"
-	testId, err := db.AddUser(testName, testEmail, testPassword)
+	testId, err := db.AddUser(testUserName, testUserEmail, testUserPassword)
 	if err != nil {
 		t.Fatalf("could not add user, %v", err)
 	}
-	row := db.db.QueryRow("SELECT * FROM users WHERE id = $1", testId)
-	var (
-		id       int
-		name     string
-		email    string
-		password string
-	)
-	if err := row.Scan(&id, &name, &email, &password); err != nil {
+	user, err := db.GetUser(testUserId)
+	if err != nil {
 		t.Fatalf("could not retrieve user, %v", err)
 	}
-	if id != testId {
-		t.Fatalf("id = %q, want %q", id, testId)
+	assert.Equal(t, testId, user.Id)
+	assert.Equal(t, testUserName, user.Name)
+	assert.Equal(t, testUserEmail, user.Email)
+	assert.Equal(t, testUserPassword, user.Password)
+}
+
+func TestGetUser(t *testing.T) {
+	user, err := db.GetUser(testUserId)
+	if err != nil {
+		t.Fatalf("could not retrieve user, %v", err)
 	}
-	if name != testName {
-		t.Fatalf("name = %q, want %q", name, testName)
-	}
-	if email != testEmail {
-		t.Fatalf("email = %q, want %q", email, testEmail)
-	}
-	if password != testPassword {
-		t.Fatalf("password = %q, want %q", password, testPassword)
-	}
+	assert.Equal(t, testUserId, user.Id)
+	assert.Equal(t, testUserName, user.Name)
+	assert.Equal(t, testUserEmail, user.Email)
+	assert.Equal(t, testUserPassword, user.Password)
 }
 
 func TestAddActivity(t *testing.T) {
-	testName := "Running"
-	testUserId := 1
-	testId, err := db.AddActivity(testName, testUserId)
+	testId, err := db.AddActivity(testActivityName, testUserId)
 	if err != nil {
 		t.Fatalf("could not add activity, %v", err)
 	}
-	row := db.db.QueryRow("SELECT * FROM activities WHERE id = $1", testId)
-	var (
-		id     int
-		name   string
-		userId int
-	)
-	if err := row.Scan(&id, &name, &userId); err != nil {
+	activity, err := db.GetActivity(testActivityId)
+	if err != nil {
 		t.Fatalf("could not retrieve activity, %v", err)
 	}
-	if id != testId {
-		t.Fatalf("id = %q, want %q", id, testId)
+	assert.Equal(t, testId, activity.Id)
+	assert.Equal(t, testActivityName, activity.Name)
+	assert.Equal(t, testUserId, activity.UserId)
+}
+
+func TestUpdateActivity(t *testing.T) {
+	if err := db.UpdateActivity(testActivityId, testActivityNameUpdated); err != nil {
+		t.Fatalf("could not update activity, %v", err)
 	}
-	if name != testName {
-		t.Fatalf("name = %q, want %q", name, testName)
+	activity, err := db.GetActivity(testActivityId)
+	if err != nil {
+		t.Fatalf("could not retrieve activity, %v", err)
 	}
-	if userId != testUserId {
-		t.Fatalf("userId = %q, want %q", userId, testUserId)
-	}
+	assert.Equal(t, testActivityId, activity.Id)
+	assert.Equal(t, testActivityNameUpdated, activity.Name)
+	assert.Equal(t, testUserId, activity.UserId)
 }
 
 func TestAddBlock(t *testing.T) {
-	testStartTime := "2023-02-01T14:00:00Z"
-	testEndTime := "2023-02-01T14:30:00Z"
-	testActivityId := 1
-	testId, err := db.AddBlock(testStartTime, testEndTime, testActivityId)
+	testId, err := db.AddBlock(testBlockStartTime, testBlockEndTime, testActivityId)
 	if err != nil {
 		t.Fatalf("could not add block, %v", err)
 	}
-	row := db.db.QueryRow("SELECT * FROM blocks WHERE id = $1", testId)
-	var (
-		id         int
-		startTime  string
-		endTime    string
-		activityId int
-	)
-	if err := row.Scan(&id, &startTime, &endTime, &activityId); err != nil {
+	block, err := db.GetBlock(testId)
+	if err != nil {
 		t.Fatalf("could not retrieve block, %v", err)
 	}
-	if id != testId {
-		t.Fatalf("id = %q, want %q", id, testId)
+	assert.Equal(t, testId, block.Id)
+	assert.Equal(t, testBlockStartTime, block.StartTime)
+	assert.Equal(t, testBlockEndTime, block.EndTime)
+	assert.Equal(t, testActivityId, block.ActivityId)
+}
+
+func TestUpdateBlock(t *testing.T) {
+	if err := db.UpdateBlock(testBlockId, testBlockStartTimeUpdated, testBlockEndTimeUpdated); err != nil {
+		t.Fatalf("could not update block, %v", err)
 	}
-	if startTime != testStartTime {
-		t.Fatalf("startTime = %q, want %q", startTime, testStartTime)
+	block, err := db.GetBlock(testBlockId)
+	if err != nil {
+		t.Fatalf("could not retrieve block, %v", err)
 	}
-	if endTime != testEndTime {
-		t.Fatalf("endTime = %q, want %q", endTime, testEndTime)
-	}
-	if activityId != testActivityId {
-		t.Fatalf("activityId = %q, want %q", activityId, testActivityId)
-	}
+	assert.Equal(t, testBlockId, block.Id)
+	assert.Equal(t, testBlockStartTimeUpdated, block.StartTime)
+	assert.Equal(t, testBlockEndTimeUpdated, block.EndTime)
 }
 
 func TestAddPause(t *testing.T) {
-	testStartTime := "2023-02-01T14:15:00Z"
-	testEndTime := "2023-02-01T14:20:00Z"
-	testBlockId := 1
-	testId, err := db.AddPause(testStartTime, testEndTime, testBlockId)
+	testId, err := db.AddPause(testPauseStartTime, testPauseEndTime, testBlockId)
 	if err != nil {
 		t.Fatalf("could not add pause, %v", err)
 	}
-	row := db.db.QueryRow("SELECT * FROM pauses WHERE id = $1", testId)
-	var (
-		id        int
-		startTime string
-		endTime   string
-		blockId   int
-	)
-	if err := row.Scan(&id, &startTime, &endTime, &blockId); err != nil {
+	pause, err := db.GetPause(testPauseId)
+	if err != nil {
 		t.Fatalf("could not retrieve pause, %v", err)
 	}
-	if id != testId {
-		t.Fatalf("id = %q, want %q", id, testId)
+	assert.Equal(t, testId, pause.Id)
+	assert.Equal(t, testPauseStartTime, pause.StartTime)
+	assert.Equal(t, testPauseEndTime, pause.EndTime)
+	assert.Equal(t, testBlockId, pause.BlockId)
+}
+
+func TestUpdatePause(t *testing.T) {
+	if err := db.UpdatePause(testPauseId, testPauseStartTimeUpdated, testPauseEndTimeUpdated); err != nil {
+		t.Fatalf("could not update pause, %v", err)
 	}
-	if startTime != testStartTime {
-		t.Fatalf("startTime = %q, want %q", startTime, testStartTime)
+	pause, err := db.GetPause(testPauseId)
+	if err != nil {
+		t.Fatalf("could not retrieve pause, %v", err)
 	}
-	if endTime != testEndTime {
-		t.Fatalf("endTime = %q, want %q", endTime, testEndTime)
+	assert.Equal(t, testPauseId, pause.Id)
+	assert.Equal(t, testPauseStartTimeUpdated, pause.StartTime)
+	assert.Equal(t, testPauseEndTimeUpdated, pause.EndTime)
+}
+
+func TestGetActivities(t *testing.T) {
+	activities, err := db.GetActivities(testUserId)
+	if err != nil {
+		t.Fatalf("could not retrieve activities, %v", err)
 	}
-	if blockId != testBlockId {
-		t.Fatalf("blockId = %q, want %q", blockId, testBlockId)
+	assert.Equal(t, len(activities), 1)
+	activity := activities[0]
+	assert.Equal(t, testActivityId, activity.Id)
+	assert.Equal(t, testActivityNameUpdated, activity.Name)
+	assert.Equal(t, testUserId, activity.UserId)
+
+	blocks := activity.Blocks
+	assert.Equal(t, len(blocks), 1)
+	block := blocks[0]
+	assert.Equal(t, testBlockId, block.Id)
+	assert.Equal(t, testBlockStartTimeUpdated, block.StartTime)
+	assert.Equal(t, testBlockEndTimeUpdated, block.EndTime)
+
+	pauses := block.Pauses
+	assert.Equal(t, len(pauses), 1)
+	pause := pauses[0]
+	assert.Equal(t, testPauseId, pause.Id)
+	assert.Equal(t, testPauseStartTimeUpdated, pause.StartTime)
+	assert.Equal(t, testPauseEndTimeUpdated, pause.EndTime)
+}
+
+func TestGetActivity(t *testing.T) {
+	activity, err := db.GetActivity(testActivityId)
+	if err != nil {
+		t.Fatalf("could not retrieve activity, %v", err)
 	}
+	assert.Equal(t, activity.Id, testActivityId)
+	assert.Equal(t, activity.Name, testActivityNameUpdated)
+	assert.Equal(t, activity.UserId, testUserId)
+
+	blocks := activity.Blocks
+	assert.Equal(t, len(blocks), 1)
+	block := blocks[0]
+	assert.Equal(t, testBlockId, block.Id)
+	assert.Equal(t, testBlockStartTimeUpdated, block.StartTime)
+	assert.Equal(t, testBlockEndTimeUpdated, block.EndTime)
+
+	pauses := block.Pauses
+	assert.Equal(t, len(pauses), 1)
+	pause := pauses[0]
+	assert.Equal(t, testPauseId, pause.Id)
+	assert.Equal(t, testPauseStartTimeUpdated, pause.StartTime)
+	assert.Equal(t, testPauseEndTimeUpdated, pause.EndTime)
+}
+
+func TestGetBlocks(t *testing.T) {
+	blocks, err := db.GetBlocks(testActivityId)
+	if err != nil {
+		t.Fatalf("could not retrieve blocks, %v", err)
+	}
+	assert.Equal(t, len(blocks), 1)
+	block := blocks[0]
+	assert.Equal(t, testBlockId, block.Id)
+	assert.Equal(t, testBlockStartTimeUpdated, block.StartTime)
+	assert.Equal(t, testBlockEndTimeUpdated, block.EndTime)
+
+	pauses := block.Pauses
+	assert.Equal(t, len(pauses), 1)
+	pause := pauses[0]
+	assert.Equal(t, testPauseId, pause.Id)
+	assert.Equal(t, testPauseStartTimeUpdated, pause.StartTime)
+	assert.Equal(t, testPauseEndTimeUpdated, pause.EndTime)
+}
+
+func TestGetBlock(t *testing.T) {
+	block, err := db.GetBlock(testBlockId)
+	if err != nil {
+		t.Fatalf("could not retrieve block, %v", err)
+	}
+	assert.Equal(t, testBlockId, block.Id)
+	assert.Equal(t, testBlockStartTimeUpdated, block.StartTime)
+	assert.Equal(t, testBlockEndTimeUpdated, block.EndTime)
+
+	pauses := block.Pauses
+	assert.Equal(t, len(pauses), 1)
+	pause := pauses[0]
+	assert.Equal(t, testPauseId, pause.Id)
+	assert.Equal(t, testPauseStartTimeUpdated, pause.StartTime)
+	assert.Equal(t, testPauseEndTimeUpdated, pause.EndTime)
+}
+
+func TestGetPauses(t *testing.T) {
+	pauses, err := db.GetPauses(testBlockId)
+	if err != nil {
+		t.Fatalf("could not retrieve pauses, %v", err)
+	}
+	assert.Equal(t, len(pauses), 1)
+	pause := pauses[0]
+	assert.Equal(t, testPauseId, pause.Id)
+	assert.Equal(t, testPauseStartTimeUpdated, pause.StartTime)
+	assert.Equal(t, testPauseEndTimeUpdated, pause.EndTime)
+}
+
+func TestGetPause(t *testing.T) {
+	pause, err := db.GetPause(testPauseId)
+	if err != nil {
+		t.Fatalf("could not retrieve pause, %v", err)
+	}
+	assert.Equal(t, testPauseId, pause.Id)
+	assert.Equal(t, testPauseStartTimeUpdated, pause.StartTime)
+	assert.Equal(t, testPauseEndTimeUpdated, pause.EndTime)
 }
 
 func TestGetCurrentBlock(t *testing.T) {
-	testStartTime := "2023-02-01T14:15:00Z"
-	testActivityId := 1
-	id, err := db.AddBlock(testStartTime, "", testActivityId)
+	id, err := db.AddBlock(testStartTimeCurrentBlock, "", testActivityId)
 	if err != nil {
 		t.Fatalf("could not add block, %v", err)
 	}
@@ -172,17 +291,37 @@ func TestGetCurrentBlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get get current block, %v", err)
 	}
-	if block.Id != id {
-		t.Fatalf("id = %q, want %q", block.Id, id)
+	assert.Equal(t, id, block.Id)
+	assert.Equal(t, testStartTimeCurrentBlock, block.StartTime)
+	assert.Equal(t, testEndTimeCurrentBlock, block.EndTime)
+}
+
+func TestDeleteByTableAndId(t *testing.T) {
+	if err := db.DeleteByTableAndId("pauses", testPauseId); err != nil {
+		t.Fatalf("could not delete pause, %v", err)
 	}
-	if block.StartTime != testStartTime {
-		t.Fatalf("startTime = %q, want %q", block.StartTime, testStartTime)
+	_, err := db.GetPause(testPauseId)
+	assert.NotEqual(t, nil, err)
+	if err := db.DeleteByTableAndId("blocks", testBlockId); err != nil {
+		t.Fatalf("could not delete block, %v", err)
 	}
-	if block.EndTime.Valid {
-		t.Fatalf("endTime = valid")
+	_, err = db.GetBlock(testBlockId)
+	assert.NotEqual(t, nil, err)
+	if err := db.DeleteByTableAndId("activities", testActivityId); err != nil {
+		t.Fatalf("could not delete activity, %v", err)
 	}
+	_, err = db.GetActivity(testActivityId)
+	assert.NotEqual(t, nil, err)
+	if err := db.DeleteByTableAndId("users", testUserId); err != nil {
+		t.Fatalf("could not delete user, %v", err)
+	}
+	_, err = db.GetUser(testUserId)
+	assert.NotEqual(t, nil, err)
 }
 
 func TestClose(t *testing.T) {
-	db.Close()
+	err := db.Close()
+	if err != nil {
+		t.Fatalf("could not close database, %v", err)
+	}
 }

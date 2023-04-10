@@ -38,8 +38,12 @@ func (db *Database) Init() error {
 	return nil
 }
 
-func (db *Database) Close() {
-	db.db.Close()
+func (db *Database) Close() error {
+	err := db.db.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (db *Database) Clear() error {
@@ -61,6 +65,23 @@ func (db *Database) AddUser(name string, email string, password string) (int, er
 		return -1, err
 	}
 	return id, nil
+}
+
+func (db *Database) GetUser(userId int) (schemas.User, error) {
+	var user schemas.User
+	row := db.db.QueryRow("SELECT * FROM users WHERE id = $1", userId)
+	var id int
+	var name string
+	var email string
+	var password string
+	if err := row.Scan(&id, &name, &email, &password); err != nil {
+		return user, err
+	}
+	user.Id = id
+	user.Name = name
+	user.Email = email
+	user.Password = password
+	return user, nil
 }
 
 func (db *Database) GetActivities(userId int) ([]schemas.Activity, error) {
@@ -263,6 +284,24 @@ func (db *Database) GetPauses(blockId int) ([]schemas.Pause, error) {
 			BlockId:   blockId})
 	}
 	return pauses, nil
+}
+
+func (db *Database) GetPause(pauseId int) (schemas.Pause, error) {
+	var pause schemas.Pause
+	row := db.db.QueryRow("SELECT * FROM pauses WHERE id = $1", pauseId)
+	var id int
+	var startTime string
+	var endTime string
+	var blockId int
+	if err := row.Scan(&id, &startTime, &endTime, &blockId); err != nil {
+		return pause, err
+	}
+
+	pause.Id = id
+	pause.StartTime = startTime
+	pause.EndTime = endTime
+	pause.BlockId = blockId
+	return pause, nil
 }
 
 func (db *Database) AddPause(startTime string, endTime string, blockId int) (int, error) {
