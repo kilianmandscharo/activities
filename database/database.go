@@ -136,7 +136,7 @@ func (db *Database) UpdateActivity(id int, name string) error {
 
 func (db *Database) GetBlocks(activityId int) ([]schemas.Block, error) {
 	var blocks []schemas.Block
-	rows, err := db.db.Query("SELECT * FROM blocks WHERE activity_id = $1", activityId)
+	rows, err := db.db.Query("SELECT * FROM blocks WHERE activity_id = $1 AND end_time IS NOT NULL", activityId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -180,9 +180,37 @@ func (db *Database) GetBlock(blockId int) (schemas.Block, error) {
 	if err != nil {
 		return block, err
 	}
+
 	block.Id = id
 	block.StartTime = startTime
 	block.EndTime = endTime
+	block.ActivityId = activityId
+	block.Pauses = pauses
+	return block, nil
+}
+
+func (db *Database) GetCurrentBlock() (schemas.Block, error) {
+	var block schemas.Block
+	row := db.db.QueryRow("SELECT * FROM blocks WHERE end_time IS NULL")
+	var id int
+	var startTime string
+	var endTime sql.NullString
+	var activityId int
+	err := row.Scan(&id, &startTime, &endTime, &activityId)
+	if err == sql.ErrNoRows {
+		return block, nil
+	}
+	if err != nil {
+		return block, err
+	}
+	pauses, err := db.GetPauses(id)
+	if err != nil {
+		return block, err
+	}
+
+	block.Id = id
+	block.StartTime = startTime
+	block.EndTime = endTime.String
 	block.ActivityId = activityId
 	block.Pauses = pauses
 	return block, nil
@@ -192,7 +220,7 @@ func (db *Database) AddBlock(startTime string, endTime string, activityId int) (
 	row := db.db.QueryRow(
 		"INSERT INTO blocks (start_time, end_time, activity_id) VALUES ($1, $2, $3) RETURNING id",
 		startTime,
-		endTime,
+		newNullString(endTime),
 		activityId)
 	var id int
 	if err := row.Scan(&id); err != nil {
@@ -282,12 +310,22 @@ func createTable(db *sql.DB, name string, columns string) error {
 	return nil
 }
 
-func deleteTable(db *sql.DB, name string) error {
-	_, err := db.Exec("DROP TABLE IF EXISTS ?", name)
+func (db *Database) DeleteTable(name string) error {
+	_, err := db.db.Exec("DROP TABLE IF EXISTS ?", name)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func newNullString(s string) sql.NullString {
+	if len(s) == 0 {
+		return sql.NullString{}
+	}
+	return sql.NullString{
+		String: s,
+		Valid:  true,
+	}
 }
 
 // func DeleteTables(db *sql.DB) error {

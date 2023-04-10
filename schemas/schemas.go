@@ -1,5 +1,7 @@
 package schemas
 
+import "database/sql"
+
 type TableSchema struct {
 	Name    string
 	Columns string
@@ -56,4 +58,12 @@ type PauseCreate struct {
 	StartTime string `json:"startTime" binding:"required"`
 	EndTime   string `json:"endTime" binding:"required"`
 	BlockId   int    `json:"blockId"`
+}
+
+type CurrentBlock struct {
+	Id         int            `json:"id"`
+	StartTime  string         `json:"startTime"`
+	EndTime    sql.NullString `json:"endTime"`
+	ActivityId int            `json:"activityId"`
+	Pauses     []Pause        `json:"pauses"`
 }

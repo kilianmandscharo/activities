@@ -161,6 +161,28 @@ func TestAddPause(t *testing.T) {
 	}
 }
 
+func TestGetCurrentBlock(t *testing.T) {
+	testStartTime := "2023-02-01T14:15:00Z"
+	testActivityId := 1
+	id, err := db.AddBlock(testStartTime, "", testActivityId)
+	if err != nil {
+		t.Fatalf("could not add block, %v", err)
+	}
+	block, err := db.GetCurrentBlock()
+	if err != nil {
+		t.Fatalf("could not get get current block, %v", err)
+	}
+	if block.Id != id {
+		t.Fatalf("id = %q, want %q", block.Id, id)
+	}
+	if block.StartTime != testStartTime {
+		t.Fatalf("startTime = %q, want %q", block.StartTime, testStartTime)
+	}
+	if block.EndTime.Valid {
+		t.Fatalf("endTime = valid")
+	}
+}
+
 func TestClose(t *testing.T) {
-  db.Close()
+	db.Close()
 }

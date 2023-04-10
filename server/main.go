@@ -123,6 +123,15 @@ func main() {
 		}
 	})
 
+	router.GET("/current", func(c *gin.Context) {
+		block, err := db.GetCurrentBlock()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "could not get current block"})
+		} else {
+			c.JSON(http.StatusOK, block)
+		}
+	})
+
 	router.GET("/blocks/:activityId", func(c *gin.Context) {
 		activityId, _ := strconv.Atoi(c.Param("activityId"))
 		blocks, err := db.GetBlocks(activityId)
@@ -146,6 +155,7 @@ func main() {
 	router.POST("/block", func(c *gin.Context) {
 		var block schemas.BlockCreate
 		if err := c.BindJSON(&block); err != nil {
+      fmt.Println(err)
 			c.JSON(http.StatusBadRequest, gin.H{"status": "could not read block"})
 			return
 		}
